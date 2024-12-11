@@ -651,30 +651,4 @@ public class SwarmManager : MonoBehaviour
         }
     }
 
-    private void OnDrawGizmos()
-    {
-        Gizmos.color = Color.gray;
-        Gizmos.DrawWireCube(transform.position, boundsSize);
-
-        // Food attractors
-        Gizmos.color = Color.blue;
-        foreach (var fa in foodAttractors)
-        {
-            Gizmos.DrawSphere(fa.position, 1f);
-        }
-
-        // Boids
-        foreach (var boid in boidDataList)
-        {
-            Color c = Color.white;
-            switch ((SwarmType)boid.swarmType)
-            {
-                case SwarmType.Prey: c = Color.green; break;
-                case SwarmType.Predator: c = Color.red; break;
-                case SwarmType.Omnivore: c = Color.yellow; break;
-            }
-            Gizmos.color = c;
-            Gizmos.DrawSphere(boid.position, 0.2f);
-        }
-    }
 }

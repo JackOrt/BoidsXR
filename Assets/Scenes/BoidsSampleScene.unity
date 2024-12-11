@@ -169,7 +169,7 @@ MonoBehaviour:
   - type: 2
     swarmID: 1
     boidCount: 2
-    boidMesh: {fileID: -4299625302041532480, guid: bf7151579c38e2a44be94ba8773876c1, type: 3}
+    boidMesh: {fileID: -7160817755776487115, guid: 9b68b054df6817b4c8d4b428b5c456db, type: 3}
     boidMaterial: {fileID: 2100000, guid: e54fc4fe8d120f34e89d2f6595cad9ec, type: 2}
     parameters:
       separationWeight: 3
@@ -182,7 +182,7 @@ MonoBehaviour:
     speed: 10
     swarmColor: {x: 0, y: 0, z: 0, w: 0}
     rotation: {x: 0, y: 0, z: 0}
-    scale: {x: 10, y: 10, z: 10}
+    scale: {x: 1, y: 1, z: 1}
   - type: 0
     swarmID: 3
     boidCount: 1000
