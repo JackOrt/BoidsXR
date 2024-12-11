@@ -1,0 +1,47 @@
+#pragma kernel CSClassify
+
+struct BoidData
+{
+    float3 position;
+    float3 velocity;
+    int boidType;
+    int speciesId;
+    float padding;
+    float pad1;
+    float pad2;
+    float pad3;
+};
+
+StructuredBuffer<BoidData> boidBuffer;
+RWStructuredBuffer<uint> speciesCounts;       // Counter for each species
+RWStructuredBuffer<uint> speciesOffsets;      // Prefix sum offsets
+RWStructuredBuffer<uint> speciesInstanceBuffer; // Instance IDs per species
+
+int boidCount;
+int speciesCount;
+int mode; // 0: Count, 1: Assign
+
+[numthreads(256,1,1)]
+void CSClassify(uint3 id : SV_DispatchThreadID)
+{
+    int index = id.x;
+    if (index >= boidCount) return;
+
+    BoidData boid = boidBuffer[index];
+    int sid = boid.speciesId;
+    if (sid < 0 || sid >= speciesCount) return;
+
+    if (mode == 0)
+    {
+        // Counting pass
+        InterlockedAdd(speciesCounts[sid], 1);
+    }
+    else if (mode == 1)
+    {
+        // Placement pass
+        uint baseOffset = speciesOffsets[sid];
+        uint oldVal;
+        InterlockedAdd(speciesOffsets[sid], 1, oldVal);
+        speciesInstanceBuffer[baseOffset + oldVal] = index;
+    }
+}
