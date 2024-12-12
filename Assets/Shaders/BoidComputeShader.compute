@@ -175,7 +175,7 @@ void CSMain(uint3 id : SV_DispatchThreadID)
             if (avoid)
             {
                 float3 dir = normalize(toOther);
-                extraAvoidanceForce -= dir * 2.0;
+                extraAvoidanceForce -= dir * 10.0;
             }
 
             if (seek)
@@ -294,7 +294,7 @@ void CSMain(uint3 id : SV_DispatchThreadID)
 
     if (isPrey || isOmnivore)
     {
-        acceleration += foodAttraction * 5000.0f; // Adjust as needed
+        acceleration += foodAttraction * 5.0f; // Adjust as needed
     }
 
     boid.velocity += acceleration * deltaTime;

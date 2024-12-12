@@ -120,8 +120,57 @@ public class SwarmManager : MonoBehaviour
     private int[] swarmOffsets;
     private Dictionary<FoodAttractor, GameObject> foodVisuals = new Dictionary<FoodAttractor, GameObject>();
 
+   private bool roomInitialized = false;
+
     void Start()
     {
+        if (!CheckRoomInitialization())
+        {
+            Debug.LogWarning("No room object found. SwarmManager will not initialize.");
+            return;
+        }
+
+        InitializeManager();
+    }
+
+    void Update()
+    {
+        if (!roomInitialized)
+        {
+            if (CheckRoomInitialization())
+            {
+                Debug.Log("Room object detected. Initializing SwarmManager...");
+                InitializeManager();
+            }
+            else
+            {
+                return; // Skip update until the room is initialized
+            }
+        }
+
+        UpdateFoodAttractors();
+        DispatchComputeShader();
+        RenderBoids();
+    }
+
+    private bool CheckRoomInitialization()
+    {
+        GameObject[] allObjects = GameObject.FindObjectsOfType<GameObject>();
+        foreach (GameObject obj in allObjects)
+        {
+            if (obj.name.Contains("oom"))
+            {
+                roomInitialized = true;
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void InitializeManager()
+    {
+        roomInitialized = true;
+
         AssignSwarmIDs();
         AssignSwarmColors();
 
@@ -144,13 +193,6 @@ public class SwarmManager : MonoBehaviour
         InitializeSwarms();
         InitializeFoodAttractorBuffer();
         StartCoroutine(SpawnFoodAttractors());
-    }
-
-    void Update()
-    {
-        UpdateFoodAttractors();
-        DispatchComputeShader();
-        RenderBoids();
     }
 
     void OnDestroy()
@@ -185,39 +227,67 @@ public class SwarmManager : MonoBehaviour
         }
     }
 
-    private void InitializeObstacleMeshes()
-    {
-        GameObject[] obstacleObjects = GameObject.FindGameObjectsWithTag("Obstacle");
-        List<TriangleData> allTriangles = new List<TriangleData>();
+   private void InitializeObstacleMeshes()
+   {
+      // Tag all children of "Room -" objects as "Obstacle"
+      TagRoomChildrenAsObstacles();
 
-        foreach (GameObject obstacle in obstacleObjects)
-        {
-            MeshFilter[] meshFilters = obstacle.GetComponentsInChildren<MeshFilter>();
-            foreach (MeshFilter mf in meshFilters)
-            {
-                Mesh mesh = mf.sharedMesh;
-                if (mesh == null) continue;
+      // Find all objects with the "Obstacle" tag
+      GameObject[] obstacleObjects = GameObject.FindGameObjectsWithTag("Obstacle");
+      List<TriangleData> allTriangles = new List<TriangleData>();
 
-                Vector3[] vertices = mesh.vertices;
-                int[] indices = mesh.triangles;
-                Matrix4x4 localToWorld = mf.transform.localToWorldMatrix;
+      foreach (GameObject obstacle in obstacleObjects)
+      {
+         MeshFilter[] meshFilters = obstacle.GetComponentsInChildren<MeshFilter>();
 
-                for (int i = 0; i < indices.Length; i += 3)
-                {
-                    allTriangles.Add(new TriangleData
-                    {
-                        vertexA = localToWorld.MultiplyPoint3x4(vertices[indices[i]]),
-                        vertexB = localToWorld.MultiplyPoint3x4(vertices[indices[i + 1]]),
-                        vertexC = localToWorld.MultiplyPoint3x4(vertices[indices[i + 2]])
-                    });
-                }
-            }
-        }
+         foreach (MeshFilter mf in meshFilters)
+         {
+               Mesh mesh = mf.sharedMesh;
+               if (mesh == null) continue;
 
-        UploadTriangleBuffer(allTriangles.ToArray());
-        obstacleColliders = FindObjectsOfType<Collider>();
-    }
+               Vector3[] vertices = mesh.vertices;
+               int[] indices = mesh.triangles;
+               Matrix4x4 localToWorld = mf.transform.localToWorldMatrix;
 
+               for (int i = 0; i < indices.Length; i += 3)
+               {
+                  allTriangles.Add(new TriangleData
+                  {
+                     vertexA = localToWorld.MultiplyPoint3x4(vertices[indices[i]]),
+                     vertexB = localToWorld.MultiplyPoint3x4(vertices[indices[i + 1]]),
+                     vertexC = localToWorld.MultiplyPoint3x4(vertices[indices[i + 2]])
+                  });
+               }
+         }
+      }
+
+      Debug.Log("Uploaded Triangles" + allTriangles.Count);
+      // Upload triangle data to a buffer
+      UploadTriangleBuffer(allTriangles.ToArray());
+      obstacleColliders = FindObjectsOfType<Collider>();
+   }
+
+   private void TagRoomChildrenAsObstacles()
+   {
+      GameObject[] allObjects = GameObject.FindObjectsOfType<GameObject>();
+
+      foreach (GameObject obj in allObjects)
+      {
+         if (obj.name.StartsWith("Room -"))
+         {
+               TagChildrenRecursively(obj.transform, "Obstacle");
+         }
+      }
+   }
+
+   private void TagChildrenRecursively(Transform parent, string tag)
+   {
+      foreach (Transform child in parent)
+      {
+         child.gameObject.tag = tag;
+         TagChildrenRecursively(child, tag);
+      }
+   }
     private void UploadTriangleBuffer(TriangleData[] triangles)
     {
         if (triangleBuffer != null) triangleBuffer.Release();
@@ -232,6 +302,8 @@ public class SwarmManager : MonoBehaviour
         boidDataList.Clear();
         instanceDataList.Clear();
         swarmDataList.Clear();
+
+      GameObject[] camera = GameObject.FindGameObjectsWithTag("MainCamera");
 
         swarmOffsets = new int[swarms.Count];
         int cumulativeCount = 0;
@@ -263,7 +335,7 @@ public class SwarmManager : MonoBehaviour
                 Vector3 startPos = GetValidSpawnPosition();
                 BoidData bData = new BoidData
                 {
-                    position = startPos,
+                    position = camera[0].transform.position,
                     velocity = -startPos * 0.1f,
                     swarmType = (int)swarm.type,
                     swarmID = swarm.swarmID
@@ -649,6 +721,12 @@ public class SwarmManager : MonoBehaviour
                 if (ab != null) ab.Release();
             }
         }
+    }
+
+private void OnDrawGizmos()
+    {
+        Gizmos.color = Color.gray;
+        Gizmos.DrawWireCube(transform.position, boundsSize);
     }
 
 }
